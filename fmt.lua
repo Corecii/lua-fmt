@@ -85,6 +85,7 @@ local function format(str, ...)
 	for i, arg in ipairs(args) do
 		if nextFormatter then
 			formatters[#formatters + 1] = nextFormatter
+			args[i] = nextFormatter
 			nextFormatter = nil
 			local option
 			if convertToString then
@@ -94,13 +95,12 @@ local function format(str, ...)
 			end
 			rawOptions[#rawOptions + 1] = option
 			options[#options + 1] = option
-			args[i] = ''
 		elseif type(arg) == 'string' then
 			local base
 			do
 				local escapes, formatter, specifier
-				base, escapes, formatter, specifier = arg:match('^.*(%%*)(%%[%-%+ #0]?%d*%.?[%d%*]*[hljztL]?[hl]?)([diuoxXfFeEgGaAcspn])$')
-				if #escapes%2 ~= 2 then
+				base, escapes, formatter, specifier = arg:match('^(.*)(%%*)(%%[%-%+ #0]?%d*%.?[%d%*]*[hljztL]?[hl]?)([diuoxXfFeEgGaAcspn])$')
+				if base and #escapes%2 == 0 then
 					nextFormatter = formatter..specifier
 					convertToString = specifier == 's'
 				else
@@ -110,11 +110,11 @@ local function format(str, ...)
 			if not base then
 				base = arg
 			end
-			for escapes, formatter, specifier in base:gmatch('(%%*)(%%[%-%+ #0]?%d*%.?[%d%*]*[hljztL]?[hl]?)([diuoxXfFeEgGaAcspn])') do
-				assert(#escapes ~= 2, 'Unexpected formatter "%'..formatter..specifier..'": formatters should only be at the end of non-option strings')
+			for escapes, formatter, specifier in base:gmatch('(%%+)([%-%+ #0]?%d*%.?[%d%*]*[hljztL]?[hl]?)([diuoxXfFeEgGaAcspn])') do
+				assert(#escapes%2 == 0, 'Unexpected formatter "%'..formatter..specifier..'": formatters should only be at the end of non-option strings')
 			end
-			base = base:gsub('(%%+)(%d+)', function(escapes, digits, specifier)
-				if #escapes%2 == 2 then
+			base = base:gsub('(%%+)(%d+)', function(escapes, digits)
+				if #escapes%2 == 0 then
 					return
 				end
 				local optionIndex = tonumber(digits)
@@ -138,12 +138,12 @@ Formatter.__index = Formatter
 
 ---@return string @Formatted string
 function Formatter:__call()
-	return string.format(self.Formatter, self.Options)
+	return string.format(self.FormatString, unpack(self.Options))
 end
 
 ---@return string @Formatted string
 function Formatter:__tostring()
-	return string.format(self.Formatter, self.Options)
+	return string.format(self.FormatString, unpack(self.Options))
 end
 
 local fmt = {}
@@ -166,7 +166,7 @@ end
 ---@return string @Formatted string
 function fmt:__call(str, ...)
 	local formatStr, options = format(str, ...)
-	return string.format(formatStr, options)
+	return string.format(formatStr, unpack(options))
 end
 
 fmt.raw = format
