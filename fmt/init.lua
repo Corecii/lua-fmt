@@ -76,13 +76,14 @@
 ---@return string[] @Formatter strings by index
 local function format(str, ...)
 	assert(type(str) == 'string', 'Expected string for argument 1, got '..type(str)..' ('..tostring(str)..')')
-	local args = {str, ...}
+	local args = table.pack(str, ...)
 	local formatters = {}
 	local rawOptions = {}
 	local options = {}
 	local nextFormatter
 	local convertToString = false
-	for i, arg in ipairs(args) do
+	for i = 1, args.n do
+		local arg = args[i]
 		if nextFormatter then
 			formatters[#formatters + 1] = nextFormatter
 			args[i] = nextFormatter
@@ -129,6 +130,7 @@ local function format(str, ...)
 			options[#options + 1] = tostring(arg)
 		end
 	end
+
 	return table.concat(args), options, rawOptions, formatters
 end
 
